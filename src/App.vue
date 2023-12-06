@@ -1,10 +1,12 @@
 <script setup lang="ts">
 import HelloWorld from './components/HelloWorld.vue'
 import BasicScene from './pages/BasicScene/index.vue'
+import Textures from './pages/Textures/index.vue'
 </script>
 
 <template>
-    <BasicScene />
+    <!-- <BasicScene /> -->
+    <Textures />
     <!-- <div>
         <a href="https://vitejs.dev" target="_blank">
             <img src="/vite.svg" class="logo" alt="Vite logo" />
