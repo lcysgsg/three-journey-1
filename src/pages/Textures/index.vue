@@ -30,6 +30,15 @@ onMounted(() => {
         width: 800,
         height: 600,
     }
+
+    const container = document.querySelector(`#${uniqueId}`) as HTMLElement
+    const renderer = new THREE.WebGLRenderer({
+        canvas: container,
+        antialias: true,
+    })
+    renderer.setSize(sizes.width, sizes.height)
+    renderer.shadowMap.enabled = true
+
     const cursor = {
         x: 0,
         y: 0,
@@ -187,24 +196,73 @@ onMounted(() => {
     // addMesh2()
 
     const camera = new THREE.PerspectiveCamera(75, sizes.width / sizes.height)
-    camera.position.z = 5
-    camera.position.x = 1
-    camera.position.y = 1
+    camera.position.x = -3
+    camera.position.y = 6
+    camera.position.z = 4
     scene.add(camera)
+    // add camera helper
+    const cameraHelper = new THREE.CameraHelper(camera)
+    scene.add(cameraHelper)
+
+    const controls = new OrbitControls(camera, container)
+
+    // controls.enableDamping = true
+    // controls.enabled = false
+
+    const CameraGUIFolder = gui.addFolder('CameraGUIFolder')
+    CameraGUIFolder.add(camera.position, 'x')
+        .min(-5)
+        .max(10)
+        .step(0.01)
+        .listen()
+    CameraGUIFolder.add(camera.position, 'y')
+        .min(-5)
+        .max(10)
+        .step(0.01)
+        .listen()
+    CameraGUIFolder.add(camera.position, 'z')
+        .min(-5)
+        .max(10)
+        .step(0.01)
+        .listen()
+    // control camera rotation
+    CameraGUIFolder.add(camera.rotation, 'x')
+        .name('rotation x')
+        .min(-Math.PI)
+        .max(Math.PI)
+        .step(0.01)
+        .onChange(() => {
+            // camera.updateProjectionMatrix()
+            // camera.updateProjectionMatrix()
+            // camera.updateMatrixWorld()
+        })
+        .listen()
+    CameraGUIFolder.add(camera.rotation, 'y')
+        .name('rotation y')
+        .min(-Math.PI)
+        .max(Math.PI)
+        .step(0.01)
+        .onChange(() => {
+            // camera.position.x = 3
+            // camera.lookAt(scene.position)
+            // camera.updateProjectionMatrix()
+            // camera.updateMatrixWorld()
+        })
+        .listen()
+    CameraGUIFolder.add(camera.rotation, 'z')
+        .name('rotation z')
+        .min(-Math.PI)
+        .max(Math.PI)
+        .step(0.01)
+        .onChange(() => {
+            // camera.updateProjectionMatrix()
+            // camera.updateProjectionMatrix()
+            // camera.updateMatrixWorld()
+        })
+        .listen()
 
     const axesHelper = new THREE.AxesHelper(3)
     scene.add(axesHelper)
-
-    const container = document.querySelector(`#${uniqueId}`) as HTMLElement
-    const renderer = new THREE.WebGLRenderer({
-        canvas: container,
-        antialias: true,
-    })
-    renderer.setSize(sizes.width, sizes.height)
-    renderer.shadowMap.enabled = true
-
-    const controls = new OrbitControls(camera, container)
-    controls.enableDamping = true
 
     /**
      * Raycaster
@@ -229,25 +287,128 @@ onMounted(() => {
         })
     }
 
+    // initCameraPositionAndLookAt
+    const initCameraPositionAndLookAt = () => {
+        gsap.to(camera.position, {
+            x: -3,
+            y: 6,
+            z: 4,
+            duration: 1,
+            onUpdate: () => {
+                // camera.lookAt(modelCabinet2.position)
+                controls.update()
+            },
+        })
+        gsap.to(controls.target, {
+            z: 0,
+            y: 0,
+            x: 0,
+            duration: 1,
+            onUpdate: () => {
+                // camera.lookAt(modelCabinet2.position)
+                controls.update()
+            },
+        })
+    }
     let currentIntersect: THREE.Group<THREE.Object3DEventMap> | undefined
     let currentIntersectCabinet: THREE.Intersection | undefined
     let currentIntersectCabinet4: THREE.Intersection | undefined
     window.addEventListener('click', () => {
         switch (currentIntersect) {
             case modelCabinet2:
-                console.log('modelCabinet')
-                if (cabinet2DoorStatus) {
-                    cabinet2close()
-                } else {
-                    cabinet2open()
+                {
+                    // use controls.target instead of camera.lookAt
+                    // https://discourse.threejs.org/t/controls-target-vs-camera-lookat/5086
+                    gsap.to(controls.target, {
+                        z: modelCabinet2.position.z,
+                        y: 1.5,
+                        x: modelCabinet2.position.x,
+                        duration: 1,
+                        onUpdate: () => {
+                            // camera.lookAt(modelCabinet2.position)
+                            controls.update()
+                        },
+                    })
+                    gsap.to(camera.position, {
+                        z: modelCabinet2.position.z + 5,
+                        y: 1.5,
+                        x: modelCabinet2.position.x,
+                        duration: 1,
+                    })
+                    // const startOrientation = camera.quaternion.clone()
+                    // const targetOrientation = modelCabinet2.quaternion
+                    //     .clone()
+                    //     .normalize()
+                    // gsap.to(
+                    //     {},
+                    //     {
+                    //         duration: 1.3,
+                    //         onUpdate: function () {
+                    //             camera.quaternion
+                    //                 .copy(startOrientation)
+                    //                 .slerp(targetOrientation, this.progress())
+                    //         },
+                    //     }
+                    // )
+                    // camera.lookAt(modelCabinet2.position)
+                    // camera.updateProjectionMatrix()
+                    if (cabinet2DoorStatus) {
+                        cabinet2close()
+                        initCameraPositionAndLookAt()
+                    } else {
+                        cabinet2open()
+                        cabinet4DoorStatus && cabinet4close()
+                    }
                 }
                 break
             case modelCabinet4:
-                console.log('modelCabinet4')
-                if (cabinet4DoorStatus) {
-                    cabinet4close()
-                } else {
-                    cabinet4open()
+                {
+                    gsap.to(controls.target, {
+                        z: modelCabinet4.position.z,
+                        y: 1.5,
+                        x: modelCabinet4.position.x,
+                        duration: 1,
+                        onUpdate: () => {
+                            // camera.lookAt(modelCabinet2.position)
+                            controls.update()
+                        },
+                    })
+                    gsap.to(camera.position, {
+                        z: modelCabinet4.position.z + 5,
+                        y: 1.5,
+                        x: modelCabinet4.position.x,
+                        duration: 1,
+                        onUpdate: () => {
+                            // camera.lookAt(modelCabinet4.position)
+                        },
+                    })
+                    // const startOrientation = camera.quaternion.clone()
+                    // const targetOrientation = modelCabinet4.quaternion
+                    //     .clone()
+                    //     .normalize()
+                    // gsap.to(
+                    //     {},
+                    //     {
+                    //         duration: 1.3,
+                    //         onUpdate: function () {
+                    //             camera.quaternion
+                    //                 .copy(startOrientation)
+                    //                 .slerp(targetOrientation, this.progress())
+                    //         },
+                    //     }
+                    // )
+                    // camera.position.z = modelCabinet4.position.z + 5
+                    // camera.position.y = 1.5
+                    // camera.position.x = modelCabinet4.position.x
+                    // camera.lookAt(modelCabinet4.position)
+                    // camera.updateProjectionMatrix()
+                    if (cabinet4DoorStatus) {
+                        cabinet4close()
+                        initCameraPositionAndLookAt()
+                    } else {
+                        cabinet4open()
+                        cabinet2DoorStatus && cabinet2close()
+                    }
                 }
                 break
         }
@@ -314,8 +475,9 @@ onMounted(() => {
             cabinet4Mixer.update(0.01)
         }
 
-        controls.update()
+        // controls.update()
 
+        camera.updateProjectionMatrix()
         renderer.render(scene, camera)
         requestAnimationFrame(tick)
     }
