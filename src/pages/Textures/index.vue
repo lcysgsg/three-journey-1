@@ -1,10 +1,10 @@
 <template>
     <canvas :id="uniqueId"></canvas>
 
-    <div style="position: fixed; z-index: 999">
+    <!-- <div style="position: fixed; z-index: 999">
         <button @click="cabinet4open">开门</button>
         <button @click="cabinet4close">关门</button>
-    </div>
+    </div> -->
 </template>
 
 <script setup lang="ts">
@@ -23,13 +23,29 @@ let cabinet2close: () => void
 let cabinet4DoorStatus = false
 let cabinet4open: () => void
 let cabinet4close: () => void
+let helmetStatus = false
 
 onMounted(() => {
     const gui = new GUI({})
     const sizes = {
-        width: 800,
-        height: 600,
+        // width: 800,
+        // height: 600,
+        width: window.innerWidth,
+        height: window.innerHeight,
     }
+    window.addEventListener('resize', () => {
+        // Update sizes
+        sizes.width = window.innerWidth
+        sizes.height = window.innerHeight
+
+        // Update camera
+        camera.aspect = sizes.width / sizes.height
+        camera.updateProjectionMatrix()
+
+        // Update renderer
+        renderer.setSize(sizes.width, sizes.height)
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
+    })
 
     const container = document.querySelector(`#${uniqueId}`) as HTMLElement
     const renderer = new THREE.WebGLRenderer({
@@ -38,6 +54,7 @@ onMounted(() => {
     })
     renderer.setSize(sizes.width, sizes.height)
     renderer.shadowMap.enabled = true
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap
 
     const cursor = {
         x: 0,
@@ -50,14 +67,52 @@ onMounted(() => {
 
     const scene = new THREE.Scene()
     scene.background = new THREE.Color(0x000000)
+    const debugObject = {}
 
+    /**
+     * Update all materials
+     */
+    const updateAllMaterials = () => {
+        scene.traverse((child) => {
+            if (
+                child instanceof THREE.Mesh &&
+                child.material instanceof THREE.MeshStandardMaterial
+            ) {
+                // child.material.envMap = environmentMap
+                // child.material.envMapIntensity = debugObject.envMapIntensity
+                child.castShadow = true
+                child.receiveShadow = true
+            }
+        })
+    }
     // add light
-    const light = new THREE.AmbientLight(0xffffff, 1)
-    light.position.set(0, 0, 1)
-    scene.add(light)
+    const ambientLight = new THREE.AmbientLight(0xffffff, 3)
+    ambientLight.position.set(0, 0, 1)
+    scene.add(ambientLight)
+    const AmbientLightGUIFolder = gui.addFolder('AmbientLightGUIFolder')
+    AmbientLightGUIFolder.add(ambientLight, 'intensity')
+        .min(0)
+        .max(3)
+        .step(0.01)
+    AmbientLightGUIFolder.add(ambientLight.position, 'x')
+        .min(-10)
+        .max(10)
+        .step(0.01)
+    AmbientLightGUIFolder.add(ambientLight.position, 'y')
+        .min(-10)
+        .max(10)
+        .step(0.01)
+    AmbientLightGUIFolder.add(ambientLight.position, 'z')
+        .min(-10)
+        .max(10)
+        .step(0.01)
 
-    const directionalLight = new THREE.DirectionalLight(0xffffff, 1.5)
-    directionalLight.position.set(-4, 5, 3)
+    const directionalLight = new THREE.DirectionalLight(0xffffff, 2)
+    directionalLight.castShadow = true
+    // directionalLight.shadow.camera.far = 15
+    // directionalLight.shadow.mapSize.set(1024, 1024)
+    directionalLight.shadow.normalBias = 0.05
+    directionalLight.position.set(-1.3, 7, 1.15)
     scene.add(directionalLight)
 
     const directionalLightHelper = new THREE.DirectionalLightHelper(
@@ -107,15 +162,15 @@ onMounted(() => {
                 actionClose.reset().play()
                 cabinet2DoorStatus = false
             }
+            cabinet2close()
             // action.play()
             // scale the model
             gltf.scene.position.setZ(-1.5)
             gltf.scene.scale.set(0.7, 0.7, 0.7)
+
             scene.add(gltf.scene)
             modelCabinet2 = gltf.scene
-            // modelCabinet.traverse((child) => {
-            //     child._name = 'cabinet-2'
-            // })
+            updateAllMaterials()
         })
     }
     loadCabinetModel()
@@ -154,9 +209,52 @@ onMounted(() => {
             // modelCabinet4.traverse((child) => {
             //     child._name = 'cabinet-4'
             // })
+            updateAllMaterials()
         })
     }
     loadCabinet4Model()
+
+    let modelHelmet: THREE.Group
+    function loadModelHelmet() {
+        const gltfLoader = new GLTFLoader()
+        gltfLoader.load('/models/warehouse/helmet.glb', (gltf) => {
+            gltf.scene.position.set(0, 0.2, -1.4)
+            gltf.scene.scale.set(0.3, 0.3, 0.3)
+
+            const GUIFolderHelmet = gui.addFolder('model-helmet')
+            GUIFolderHelmet.add(gltf.scene.position, 'x')
+                .min(-10)
+                .max(10)
+                .step(0.01)
+            GUIFolderHelmet.add(gltf.scene.position, 'y')
+                .min(-10)
+                .max(10)
+                .step(0.01)
+            GUIFolderHelmet.add(gltf.scene.position, 'z')
+                .min(-10)
+                .max(10)
+                .step(0.01)
+            GUIFolderHelmet.add(gltf.scene.scale, 'x')
+                .name('scale-x')
+                .min(-10)
+                .max(10)
+                .step(0.01)
+            GUIFolderHelmet.add(gltf.scene.scale, 'y')
+                .name('scale-y')
+                .min(-10)
+                .max(10)
+                .step(0.01)
+            GUIFolderHelmet.add(gltf.scene.scale, 'z')
+                .name('scale-z')
+                .min(-10)
+                .max(10)
+                .step(0.01)
+            scene.add(gltf.scene)
+            modelHelmet = gltf.scene
+            updateAllMaterials()
+        })
+    }
+    loadModelHelmet()
 
     function loadSceneModel() {
         const gltfLoader = new GLTFLoader()
@@ -164,6 +262,7 @@ onMounted(() => {
             console.log('gltf', gltf)
             gltf.scene.scale.set(2, 2, 2)
             scene.add(gltf.scene)
+            updateAllMaterials()
         })
     }
     loadSceneModel()
@@ -313,7 +412,15 @@ onMounted(() => {
     let currentIntersect: THREE.Group<THREE.Object3DEventMap> | undefined
     let currentIntersectCabinet: THREE.Intersection | undefined
     let currentIntersectCabinet4: THREE.Intersection | undefined
-    window.addEventListener('click', () => {
+
+    let tempMouseDownIntersect: THREE.Group<THREE.Object3DEventMap> | undefined
+    window.addEventListener('mousedown', () => {
+        tempMouseDownIntersect = currentIntersect
+    })
+
+    window.addEventListener('mouseup', () => {
+        // when mouse down object is not the same as mouse up object then return
+        if (tempMouseDownIntersect !== currentIntersect) return
         switch (currentIntersect) {
             case modelCabinet2:
                 {
@@ -411,6 +518,68 @@ onMounted(() => {
                     }
                 }
                 break
+
+            case modelHelmet:
+                {
+                    console.log('modelHelmet')
+
+                    gsap.to(controls.target, {
+                        y: 0.6,
+                        x: modelHelmet.position.x,
+                        z: modelHelmet.position.z,
+                        duration: 1,
+                        onUpdate: () => {
+                            // camera.lookAt(modelCabinet2.position)
+                            controls.update()
+                        },
+                    })
+                    gsap.to(camera.position, {
+                        z: modelHelmet.position.z + 3,
+                        y: 1,
+                        x: modelHelmet.position.x,
+                        duration: 1,
+                        onUpdate: () => {
+                            // camera.lookAt(modelCabinet4.position)
+                        },
+                    })
+
+                    if (helmetStatus) {
+                        // scale-up model
+                        // gsap.to(modelHelmet.scale, {
+                        //     x: 0.3,
+                        //     y: 0.3,
+                        //     z: 0.3,
+                        //     duration: 1,
+                        // })
+                        gsap.to(modelHelmet.position, {
+                            x: 0,
+                            y: 0.2,
+                            z: -1.4,
+                            duration: 1,
+                        })
+                        gsap.to(modelHelmet.rotation, {
+                            y: 0,
+                            duration: 1,
+                        })
+                        helmetStatus = false
+                    } else {
+                        // scale-up model
+                        // gsap.to(modelHelmet.scale, {
+                        //     z: 0.6,
+                        //     y: 0.6,
+                        //     x: 0.6,
+                        //     duration: 1,
+                        // })
+                        gsap.to(modelHelmet.position, {
+                            x: 0,
+                            y: 0.6,
+                            z: 0,
+                            duration: 1,
+                        })
+                        helmetStatus = true
+                    }
+                }
+                break
         }
     })
     function tick() {
@@ -420,8 +589,8 @@ onMounted(() => {
 
         // Cast a ray from the mouse and handle events
         raycaster.setFromCamera(mouse, camera)
-        const objects = [modelCabinet2, modelCabinet4]
-        if (modelCabinet2 && modelCabinet4) {
+        const objects = [modelCabinet2, modelCabinet4, modelHelmet]
+        if (modelCabinet2 && modelCabinet4 && modelCabinet2) {
             const intersects = raycaster.intersectObjects(objects)
 
             if (intersects.length) {
@@ -473,6 +642,11 @@ onMounted(() => {
 
         if (cabinet4Mixer) {
             cabinet4Mixer.update(0.01)
+        }
+
+        // helmetStatus === true let the model rotate calc it with Math.PI
+        if (helmetStatus) {
+            modelHelmet.rotation.y += 0.01
         }
 
         // controls.update()
