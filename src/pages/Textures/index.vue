@@ -5,6 +5,15 @@
         <button @click="cabinet4open">开门</button>
         <button @click="cabinet4close">关门</button>
     </div> -->
+
+    <!-- modal cabinet-2 -->
+    <div class="point point-0">
+        <div class="label">工器具专用管理柜</div>
+        <div class="text">
+            Front and top screen with HUD aggregating terrain and battle
+            informations.
+        </div>
+    </div>
 </template>
 
 <script setup lang="ts">
@@ -87,7 +96,6 @@ onMounted(() => {
     }
     // add light
     const ambientLight = new THREE.AmbientLight(0xffffff, 3)
-    ambientLight.position.set(0, 0, 1)
     scene.add(ambientLight)
     const AmbientLightGUIFolder = gui.addFolder('AmbientLightGUIFolder')
     AmbientLightGUIFolder.add(ambientLight, 'intensity')
@@ -300,8 +308,8 @@ onMounted(() => {
     camera.position.z = 4
     scene.add(camera)
     // add camera helper
-    const cameraHelper = new THREE.CameraHelper(camera)
-    scene.add(cameraHelper)
+    // const cameraHelper = new THREE.CameraHelper(camera)
+    // scene.add(cameraHelper)
 
     const controls = new OrbitControls(camera, container)
 
@@ -367,6 +375,7 @@ onMounted(() => {
      * Raycaster
      */
     const raycaster = new THREE.Raycaster()
+    const raycaster2 = new THREE.Raycaster()
     // const rayOrigin = new THREE.Vector3(-3, 0, 0)
     // const rayDirection = new THREE.Vector3(10, 0, 0)
     // rayDirection.normalize()
@@ -582,6 +591,17 @@ onMounted(() => {
                 break
         }
     })
+
+    /**
+     * Points of interest
+     */
+    const points = [
+        {
+            // position: new THREE.Vector3(1.55, 0.3, -0.6),
+            position: new THREE.Vector3(0, 0, 1),
+            element: document.querySelector('.point-0') as HTMLElement,
+        },
+    ]
     function tick() {
         // camera.position.x = cursor.x * 10
         // camera.position.y = cursor.y * 10
@@ -651,6 +671,51 @@ onMounted(() => {
 
         // controls.update()
 
+        if (modelCabinet2 && modelCabinet4 && modelCabinet2) {
+            // Go through each point
+            for (const point of points) {
+                if (!point.element) return
+                // Get 2D screen position
+                const screenPosition = point.position.clone()
+                screenPosition.project(camera)
+
+                // Set the raycaster
+                const objects = [modelCabinet2, modelCabinet4, modelHelmet]
+                raycaster2.setFromCamera(screenPosition, camera)
+                const intersects = raycaster2.intersectObjects(objects, true)
+                // No intersect found
+                if (intersects.length === 0) {
+                    // Show
+                    point.element.classList.add('visible')
+                }
+
+                // Intersect found
+                else {
+                    // Get the distance of the intersection and the distance of the point
+                    const intersectionDistance = intersects[0].distance
+                    const pointDistance = point.position.distanceTo(
+                        camera.position
+                    )
+                    // Intersection is close than the point
+                    if (intersectionDistance < pointDistance) {
+                        // Hide
+                        point.element.classList.remove('visible')
+                    }
+                    // Intersection is further than the point
+                    else {
+                        // Show
+                        point.element.classList.add('visible')
+                    }
+                }
+                const translateX = screenPosition.x * sizes.width * 0.5
+                console.log('screenPosition.x', screenPosition.x)
+                console.log('sizes.width', sizes.width)
+                console.log('translateX', translateX)
+                const translateY = -screenPosition.y * sizes.height * 0.5
+                point.element.style.transform = `translateX(${translateX}px) translateY(${translateY}px)`
+            }
+        }
+
         camera.updateProjectionMatrix()
         renderer.render(scene, camera)
         requestAnimationFrame(tick)
@@ -658,3 +723,57 @@ onMounted(() => {
     tick()
 })
 </script>
+
+<style scoped>
+.point {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    /* pointer-events: none; */
+}
+
+.point .label {
+    position: absolute;
+    top: -20px;
+    left: -20px;
+    padding: 10px 5px;
+    width: 140px;
+    border-radius: 10px;
+    background: #00000077;
+    border: 1px solid #ffffff77;
+    color: #ffffff;
+    text-align: center;
+    font-weight: 100;
+    font-size: 14px;
+    cursor: help;
+    transform: scale(0, 0);
+    transition: transform 0.3s;
+}
+
+.point .text {
+    position: absolute;
+    top: 30px;
+    left: -50px;
+    width: 200px;
+    padding: 20px;
+    border-radius: 4px;
+    background: #00000077;
+    border: 1px solid #ffffff77;
+    color: #ffffff;
+    line-height: 1.3em;
+    font-family: Helvetica, Arial, sans-serif;
+    font-weight: 100;
+    font-size: 14px;
+    opacity: 0;
+    transition: opacity 0.3s;
+    pointer-events: none;
+}
+
+.point:hover .text {
+    opacity: 1;
+}
+
+.point.visible .label {
+    transform: scale(1, 1);
+}
+</style>
